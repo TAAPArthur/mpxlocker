@@ -13,8 +13,7 @@ xcb_window_t root;
 int16_t masterDevices[255][2];
 
 void grabMaster(int id) {
-    xcb_input_grab_device_reply_t * reply =
-    xcb_input_grab_device_reply (dis,xcb_input_grab_device(dis,root, XCB_CURRENT_TIME, 0, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 1, id, NULL), NULL);
+    xcb_input_grab_device_unchecked(dis,root, XCB_CURRENT_TIME, 0, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 1, id, NULL);
 }
 
 void grabNewMaster(xcb_input_hierarchy_event_t* event) {
@@ -36,6 +35,7 @@ void grabAllMasters() {
         grabMaster(info->deviceid);
         xcb_input_xi_device_info_next (&iter);
     }
+    free(reply);
 }
 
 
