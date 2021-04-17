@@ -50,18 +50,51 @@ int isDisplacementGreaterThanThreshold(xcb_input_button_press_event_t*  event) {
     return deltaX > THRESHOLD || deltaY > THRESHOLD;
 }
 
-int main(int argc, const char* argv[]) {
-    dis = xcb_connect(NULL, NULL);
-    root = xcb_setup_roots_iterator(xcb_get_setup(dis)).data->root;
+void selectEvents(int eventMask) {
     struct {
 		xcb_input_event_mask_t head;
 		xcb_input_xi_event_mask_t mask;
 	} mask = {
-        {XCB_INPUT_DEVICE_ALL, sizeof(xcb_input_xi_event_mask_t) / sizeof(uint32_t)},
-        XCB_INPUT_XI_EVENT_MASK_BUTTON_PRESS | XCB_INPUT_XI_EVENT_MASK_BUTTON_RELEASE | XCB_INPUT_XI_EVENT_MASK_HIERARCHY};
+        {XCB_INPUT_DEVICE_ALL, sizeof(xcb_input_xi_event_mask_t) / sizeof(uint32_t)}, eventMask};
     xcb_input_xi_select_events(dis, root, 1, &mask.head);
     xcb_flush(dis);
-    grabAllMasters();
+}
+
+void usage() {
+    printf("mpxlocker [-hn] [id1] [id2] ...\n");
+}
+
+void processArgs(const char** argv) {
+    int eventMask = XCB_INPUT_XI_EVENT_MASK_BUTTON_PRESS | XCB_INPUT_XI_EVENT_MASK_BUTTON_RELEASE | XCB_INPUT_XI_EVENT_MASK_HIERARCHY;
+    int i = 1;
+    for(; *argv && argv[0][0] == '-'; argv++) {
+        if(argv[i][1] == '-')
+            break;
+        switch(argv[i][0]){
+            case 'h':
+                usage();
+                exit(0);
+            case 'n':
+                eventMask &= ~XCB_INPUT_XI_EVENT_MASK_HIERARCHY;
+                break;
+        }
+    }
+    selectEvents(eventMask);
+    if(*argv) {
+        for(; *argv; argv++)
+            grabMaster(atoi(*argv));
+    }
+    else {
+       grabAllMasters();
+    }
+    xcb_flush(dis);
+}
+
+int main(int argc, const char* argv[]) {
+    dis = xcb_connect(NULL, NULL);
+    root = xcb_setup_roots_iterator(xcb_get_setup(dis)).data->root;
+    processArgs(argv + 1);
+
     xcb_generic_event_t* event;
     while((event = xcb_wait_for_event(dis))) {
         int type = event->response_type & 127;
